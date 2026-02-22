@@ -1,5 +1,3 @@
-
-
 <!-- PROJECT SHIELDS -->
 
 [![Contributors][contributors-shield]][contributors-url]
@@ -18,19 +16,19 @@
     <img src="https://lisp-stat.dev/images/stats-image.svg" alt="Logo" width="80" height="80">
   </a>
 
-  <h3 align="center">Smoothers in Common Lisp</h3>
+  <h3 align="center">Quick Plot for Common Lisp</h3>
 
   <p align="center">
-	Data smoothers for Common Lisp
-	<br />
+    Composable, ggplot-style plotting helpers for Lisp-Stat
+    <br />
     <a href="https://lisp-stat.dev/docs/"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/lisp-stat/smoothers/issues">Report Bug</a>
+    <a href="https://github.com/lisp-stat/quick-plot/issues">Report Bug</a>
     ·
-    <a href="https://github.com/lisp-stat/smoothers/issues">Request Feature</a>
+    <a href="https://github.com/lisp-stat/quick-plot/issues">Request Feature</a>
     ·
-    <a href="https://lisp-stat.github.io/smoothers/">Reference Manual</a>
+    <a href="https://lisp-stat.github.io/quick-plot/">Reference Manual</a>
   </p>
 </p>
 
@@ -55,7 +53,7 @@
     </li>
     <li><a href="#usage">Usage</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
-	<li><a href="#resources">Resources</a></li>
+    <li><a href="#resources">Resources</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
@@ -67,19 +65,19 @@
 <!-- ABOUT THE PROJECT -->
 ## About the Project
 
-Nonparametric regression offers a flexible alternative to classic (parametric) methods for regression.  Unlike parametric methods, which assume that the regression relationship has a known form that depends on a finite number of unknown parameters, nonparametric regression models attempt to learn the form of the regression relationship from a sample of data.
+Quick Plot provides composable helper functions for building [Vega-Lite](https://vega.github.io/vega-lite/) plot specifications in Common Lisp.  Inspired by R's [ggplot2](https://ggplot2.tidyverse.org/), plots are constructed by combining independent layers — geometry, labels, scales, coordinates and themes — rather than writing monolithic JSON-like plists by hand.
 
-All nonparametric regression models involve finding some balance between fitting the observed sample of data (model fit) and “smoothing” the function estimate (model parsimony).  Typically, this balance is determined using some form of cross-validation, which attempts to find a function estimate that does well for predicting new data.  As a result, nonparametric regression models can be useful for discovering relationships between variables, as well as for developing generalizable prediction rules.
+The system is organized into three packages.  The `geom` package provides mark types (`point`, `bar`, `histogram`, `box-plot`, `line`), each responsible for encoding data fields into a single visual form.  The `gg` package provides layering modifiers (`label`, `axes`, `coord`, `theme`, `tooltip`) that control everything around the marks.  The `qplot` package provides a single `qplot` function that collapses plot definition, registration and rendering into one call for interactive REPL use.
+
+Every helper returns a plist fragment.  A recursive `merge-plists` combines them into a single Vega-Lite spec.  A mark function never sets axis titles; `label` never touches encodings; `theme` never alters mark types.  This separation means any helper can be used with any plot type, and layers can be added, removed or swapped without affecting the rest of the specification.
 
 
 ### Built With
 
-* [lla](https://github.com/Lisp-Stat/lla)
-* [numerical-utilities](https://github.com/Lisp-Stat/numerical-utilities)
+* [plot](https://github.com/Lisp-Stat/plot)
+* [data-frame](https://github.com/Lisp-Stat/data-frame)
 * [alexandria](https://gitlab.common-lisp.net/alexandria/alexandria)
 * [alexandria+](https://github.com/Symbolics/alexandria-plus)
-* [array-operations](https://github.com/Lisp-Stat/array-operations)
-* [let-plus](https://github.com/sharplispers/let-plus)
 
 
 <!-- GETTING STARTED -->
@@ -100,7 +98,7 @@ To make the system accessible to [ASDF](https://common-lisp.net/project/asdf/) (
 1. Clone the repositories
 ```sh
 cd ~/common-lisp && \
-git clone https://github.com/Lisp-Stat/smoothers
+git clone https://github.com/Lisp-Stat/quick-plot
 ```
 2. Reset the ASDF source-registry to find the new system (from the REPL)
    ```lisp
@@ -108,21 +106,21 @@ git clone https://github.com/Lisp-Stat/smoothers
    ```
 3. Load the system
    ```lisp
-   (asdf:load-system :smoothers)
+   (asdf:load-system :quick-plot)
    ```
 
 If you have installed the slime ASDF extensions, you can invoke this with a comma (',') from the slime REPL.
 
 #### Getting dependencies
 
-To get the third party systems that `smoothers` depends on, you can use a dependency manager, such as [Quicklisp](https://www.quicklisp.org/beta/) or [CLPM](https://www.clpm.dev/). Once installed, get the dependencies with either of:
+To get the third party systems that `quick-plot` depends on, you can use a dependency manager, such as [Quicklisp](https://www.quicklisp.org/beta/) or [CLPM](https://www.clpm.dev/). Once installed, get the dependencies with either of:
 
 ```lisp
-(clpm-client:sync :sources "smoothers") ;sources may vary
+(clpm-client:sync :sources "quick-plot") ;sources may vary
 ```
 
 ```lisp
-(ql:quickload :smoothers)
+(ql:quickload :quick-plot)
 ```
 
 You need do this only once. After obtaining the dependencies, you can
@@ -131,29 +129,54 @@ sources.
 
 
 <!-- USAGE EXAMPLES -->
-<!--
 ## Usage
 
-Create a data frame from a file named `sg-weather.csv` on the local disk:
+Import the helper functions and load the Vega example datasets:
 
 ```lisp
-(defparameter *df*
-	(read-csv #P"LS:DATA;sg-weather.csv"))
+(vega:load-vega-examples)
 
+(import '(geom:point geom:bar geom:histogram geom:box-plot geom:line))
+(import '(gg:label gg:axes gg:coord gg:theme gg:tooltip))
+(import '(qplot:qplot))
+```
+
+Create a scatter plot with color encoding and axis labels:
+
+```lisp
+(qplot 'cars vgcars
+  `(:title "Horsepower vs. Fuel Efficiency")
+   (point :horsepower :miles-per-gallon
+          :color :origin :filled t)
+   (label :x "Horsepower" :y "Miles per Gallon"))
+```
+
+Create a histogram of a quantitative variable:
+
+```lisp
+(qplot 'mpg-dist vgcars
+  `(:title "Distribution of Miles per Gallon")
+   (histogram :miles-per-gallon :color "darkslategray")
+   (label :x "Miles per Gallon" :y "Count"))
+```
+
+Create a bar chart with aggregation:
+
+```lisp
+(qplot 'avg-mpg vgcars
+  `(:title "Average MPG by Origin")
+   (bar :origin :miles-per-gallon :aggregate :mean)
+   (label :x "Origin" :y "Mean MPG"))
 ```
 
 For more examples, please refer to the
-[Documentation](https://lisp-stat.dev/docs/).
--->
+[Documentation](https://lisp-stat.dev/docs/cookbooks/quick-plot/).
 
-## References
-
-[Nonparametric Regression (Smoothers) in R](http://users.stat.umn.edu/~helwig/notes/smooth-notes.html)
 
 <!-- ROADMAP -->
 ## Roadmap
 
-See the [open issues](https://github.com/lisp-stat/smoothers/issues) for a list of proposed features (and known issues).
+See the [open issues](https://github.com/lisp-stat/quick-plot/issues) for a list of proposed features (and known issues).
 
 ## Resources
 
@@ -162,7 +185,7 @@ This system is part of the [Lisp-Stat](https://lisp-stat.dev/) project; that sho
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are what make the open source community such an amazing place to be learn, inspire, and create.  Any contributions you make are **greatly appreciated**.  Please see [CONTRIBUTING](CONTRIBUTING.md) for details on the code of conduct, and the process for submitting pull requests.  Good first issues include porting the [xlisp-stat super-smoother](https://github.com/Lisp-Stat/xls-archive/tree/master/statistics/smoothers/supersmoother) to Common Lisp and bringing in Gary King's [smoothing.lisp](https://github.com/hraban/cl-mathstats/blob/master/dev/smoothing.lisp).
+Contributions are what make the open source community such an amazing place to be learn, inspire, and create.  Any contributions you make are **greatly appreciated**.  Please see [CONTRIBUTING](CONTRIBUTING.md) for details on the code of conduct, and the process for submitting pull requests.
 
 <!-- LICENSE -->
 ## License
@@ -174,21 +197,21 @@ Distributed under the MS-PL License. See [LICENSE](LICENSE) for more information
 <!-- CONTACT -->
 ## Contact
 
-Project Link: [https://github.com/lisp-stat/smootherfs](https://github.com/lisp-stat/smoothers)
+Project Link: [https://github.com/lisp-stat/quick-plot](https://github.com/lisp-stat/quick-plot)
 
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/lisp-stat/smoothers.svg?style=for-the-badge
-[contributors-url]: https://github.com/lisp-stat/smoothers/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/lisp-stat/smoothers.svg?style=for-the-badge
-[forks-url]: https://github.com/lisp-stat/smoothers/network/members
-[stars-shield]: https://img.shields.io/github/stars/lisp-stat/smoothers.svg?style=for-the-badge
-[stars-url]: https://github.com/lisp-stat/smoothers/stargazers
-[issues-shield]: https://img.shields.io/github/issues/lisp-stat/smoothers.svg?style=for-the-badge
-[issues-url]: https://github.com/lisp-stat/smoothers/issues
-[license-shield]: https://img.shields.io/github/license/lisp-stat/smoothers.svg?style=for-the-badge
-[license-url]: https://github.com/lisp-stat/smoothers/blob/master/LICENSE
+[contributors-shield]: https://img.shields.io/github/contributors/lisp-stat/quick-plot.svg?style=for-the-badge
+[contributors-url]: https://github.com/lisp-stat/quick-plot/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/lisp-stat/quick-plot.svg?style=for-the-badge
+[forks-url]: https://github.com/lisp-stat/quick-plot/network/members
+[stars-shield]: https://img.shields.io/github/stars/lisp-stat/quick-plot.svg?style=for-the-badge
+[stars-url]: https://github.com/lisp-stat/quick-plot/stargazers
+[issues-shield]: https://img.shields.io/github/issues/lisp-stat/quick-plot.svg?style=for-the-badge
+[issues-url]: https://github.com/lisp-stat/quick-plot/issues
+[license-shield]: https://img.shields.io/github/license/lisp-stat/quick-plot.svg?style=for-the-badge
+[license-url]: https://github.com/lisp-stat/quick-plot/blob/master/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/company/symbolics/
