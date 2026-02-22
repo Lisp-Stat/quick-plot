@@ -1,0 +1,26 @@
+;;; -*- Mode: LISP; Base: 10; Syntax: ANSI-Common-Lisp; Package: CL-USER -*-
+;;; Copyright (c) 2026 by Symbolics Pte. Ltd. All rights reserved.
+
+#+nil
+(uiop:define-package #:smoothers
+  (:use #:cl #:alexandria #:alexandria+ #:num-utils #:let-plus #:select)
+  (:export #:lowess)
+  (:documentation "SMOOTHERS is a facility to generate approximating functions from noisy data."))
+
+(uiop:define-package #:qplot
+  (:use :cl)
+  (:export #:qplot)
+  (:documentation )
+
+(uiop:define-package #:gg
+  (:use :cl)
+  (:export #:label #:axes #:coord #:theme #:tooltip))
+
+(uiop:define-package #:geom
+  (:use :cl)
+  (:export #:histogram
+           #:bar
+	   #:point
+	   #:line
+	   #:box-plot))
+

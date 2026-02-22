@@ -1,0 +1,11 @@
+Quick-Plot is a GGPlot-inspired plotting library for Common Lisp,
+built on Vega-Lite. It provides three complementary packages: QPLOT
+for rapid one-liner exploratory visualizations at the REPL, GG for
+fine-grained control over plot aesthetics such as labels, axes,
+coordinate systems, themes, and tooltips following a grammar-of-graphics
+approach, and GEOM for constructing geometric objects including
+histograms, bar charts, scatter plots, lines, and box plots. Layers
+are composed declaratively as plists and merged into Vega-Lite
+specifications, making it easy to build, customise, and iterate on
+statistical graphics interactively. Quick-Plot is part of the Lisp-Stat
+ecosystem and depends on the Plot/Vega backend for rendering.
