@@ -99,3 +99,11 @@ CLIP: if T (default), marks outside the domain are hidden.
       ,@(when background `(:background ,background))
       ,@(when padding `(:padding ,padding))
       ,@(when config-props `(:config ,config-props)))))
+
+(defun layer (&rest geom-plists)
+  "Wrap two or more geom plists into a Vega-Lite layer spec. Each argument should be the plist returned by a geom:* function.
+
+EXAMPLE
+  (gg:layer (geom:line :date :price :x-type :temporal)
+            (geom:error-bar :price :category :date :extent :ci))"
+  `(:layer ,(apply #'vector geom-plists)))
