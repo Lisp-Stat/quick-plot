@@ -17,6 +17,7 @@
            #:bar
 	   #:point
 	   #:line
+	   #:box-plot
 	   #:error-bar)
   (:documentation "GEOM defines geometric objects for statistical plots, providing constructors for histograms, bar charts, scatter points, lines, and box plots used to represent data visually."))
 

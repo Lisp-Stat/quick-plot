@@ -189,7 +189,7 @@ ZERO-SCALE: if T (default), include zero; NIL sets scale zero to false"
 
 (defun line (x y &key (x-type :quantitative) (y-type :quantitative)
                       color size opacity stroke-width stroke-dash
-                      order interpolate point)
+                      order interpolate point aggregate)
   "Return a plist for a Vega-Lite line mark with x/y encodings.
 X and Y are field-name keywords.  Optional arguments:
 
@@ -210,6 +210,9 @@ X and Y are field-name keywords.  Optional arguments:
                    :linear :monotone :step :basis :cardinal
   :point        — t to overlay point marks on the line, or a plist
                    of point mark properties
+  :aggregate    — aggregation operator for the y channel, e.g. :mean :sum :count
+                    Applied inline in the y encoding, matching Vega-Lite's
+                    implicit aggregation pattern.
 
 Examples:
 
@@ -231,7 +234,8 @@ Examples:
                  `(:type :line ,@mark-props)
                  :line)
       :encoding (:x (:field ,x :type ,x-type)
-                 :y (:field ,y :type ,y-type)
+                 :y (:field ,y :type ,y-type
+                     ,@(when aggregate `(:aggregate ,aggregate)))  ; ← ADD THIS
                  ,@(when (keywordp color)
                      `(:color (:field ,color :type :nominal)))
                  ,@(when (and opacity (keywordp color))
@@ -242,3 +246,59 @@ Examples:
                      `(:size (:value ,size)))
                  ,@(when order
                      `(:order (:field ,order)))))))
+
+(defun error-bar (field &key
+                        (extent :stdev)   ; :stdev :stderr :ci :iqr or a number
+                        (orient :vertical) ; :vertical (y-errors) or :horizontal (x-errors)
+                        (category nil)    ; nominal field for x/y grouping
+                        (color nil)       ; keyword → field encoding, string → literal CSS
+                        (opacity nil)
+                        (legend nil)
+                        (thickness nil)   ; stroke width of the error bar rule
+                        (ticks nil))      ; t to show tick marks at whisker ends
+  "Return plist specifying an error bar encoding.
+
+FIELD: the quantitative field whose spread is shown.
+EXTENT: summary statistic for the whiskers.
+  :stdev  — ±1 standard deviation (default)
+  :stderr — ±1 standard error
+  :ci     — 95% confidence interval
+  :iqr    — interquartile range
+  number  — symmetric extent in data units
+ORIENT: :vertical (default, error bars run along y-axis)
+        or :horizontal (error bars run along x-axis)
+CATEGORY: optional nominal field used as the opposite axis for grouping.
+COLOR: a keyword field name for nominal color encoding,
+       or a CSS color string for a fixed mark color.
+       When CATEGORY is set and COLOR is nil, defaults to encoding by CATEGORY.
+OPACITY: opacity value between 0 and 1.
+LEGEND: if non-NIL, include a color legend; default NIL suppresses it.
+THICKNESS: stroke width of the error bar rule in pixels.
+TICKS: if non-NIL, show tick marks at whisker ends.
+
+Examples:
+
+  (errorbar :len)
+  (errorbar :len :category :supp :extent :stdev)
+  (errorbar :len :category :dose :extent :ci :color :supp)
+  (errorbar :len :extent :stderr :orient :horizontal :color \"steelblue\")"
+  (let* ((quant-enc `(:field ,field :type :quantitative))
+         (cat-enc   (when category
+                      `(:field ,category :type :nominal)))
+         (x-enc (if (eql orient :vertical)  cat-enc   quant-enc))
+         (y-enc (if (eql orient :vertical)  quant-enc cat-enc)))
+    `(:mark (:type :errorbar
+             :extent ,extent
+             ,@(when ticks     '(:ticks t))
+             ,@(when thickness `(:thickness ,thickness))
+             ,@(when (stringp color) `(:color ,color)))
+      :encoding (,@(when x-enc `(:x ,x-enc))
+                 ,@(when y-enc `(:y ,y-enc))
+                 ,@(when (keywordp color)
+                     `(:color (:field ,color :type :nominal
+                               ,@(unless legend '(:legend :null)))))
+                 ,@(when (and category (not color))
+                     `(:color (:field ,category :type :nominal
+                               ,@(unless legend '(:legend :null)))))
+                 ,@(when opacity
+                     `(:opacity (:value ,opacity)))))))
