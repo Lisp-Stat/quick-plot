@@ -1,4 +1,4 @@
-;;; -*- Mode: LISP; Syntax: Ansi-Common-Lisp; Base: 10; Package: QPLOT -*-
+;;; -*- Mode: LISP; Syntax: Ansi-Common-Lisp; Package: QPLOT -*-
 ;;; Copyright (c) 2026 Symbolics Pte. Ltd. All rights reserved.
 ;;; Geometry helpers for common Vega-Lite plot types.
 
@@ -7,6 +7,12 @@
 (defvar *qplot-debug* nil
   "When non-nil, qplot pretty-prints the merged spec before rendering.")
 
+;; TODO:
+;; 1. make calling plot optional.  With the server in place, we want
+;; the spec and choose where to render it, emacs, server or local
+;; browser.
+;; 2. Add something like (add-plot spec) to plot/vega so we don't
+;; have to set vega::*all-plots* and vega::%defplot
 (defun qplot (name data &rest layers)
   "Quick plot for iterative REPL exploration. Merges LAYERS into a Vega-Lite spec, defines/redefines the named plot, renders it, and returns the plot object.
 

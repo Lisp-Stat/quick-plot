@@ -302,3 +302,235 @@ Examples:
                                ,@(unless legend '(:legend :null)))))
                  ,@(when opacity
                      `(:opacity (:value ,opacity)))))))
+
+;;; -*- Mode: LISP; Syntax: Ansi-Common-Lisp; Base: 10; Package: GEOM -*-
+;;; Copyright (c) 2026 Symbolics Pte. Ltd. All rights reserved.
+;;; geom:func — plot a Lisp function as a smooth line layer.
+
+(in-package #:geom)
+
+;;; Unlike the data-driven geom helpers (point, bar, histogram, etc.),
+;;; FUNC is self-contained: it samples FN at N evenly-spaced x values
+;;; over XLIM using AOPS:LINSPACE, pairs each x with its computed y,
+;;; and embeds the resulting vector of plists as an inline :data block.
+;;; This means FUNC can be used without any external data frame —
+;;; pass the returned plist directly to MERGE-PLISTS with a title and
+;;; labels, then hand the result to VEGA:DEFPLOT.
+;;;
+;;; For overlaying a function curve on top of a data-driven scatter or
+;;; line plot, use Vega-Lite's :layer composition; see the documentation
+;;; for worked examples.
+;;;
+;;; Error handling: if FN signals a condition for a particular x (e.g.
+;;; (log 0d0), (/ 1 0d0)) or returns a non-finite value (±infinity,
+;;; NaN), that point is silently dropped.  Vega-Lite renders a gap in
+;;; the line for each run of dropped points, which is the correct
+;;; visual for functions with singularities (e.g. tan, 1/x).
+
+(defun %finite-real-p (x)
+  "Return T iff X is a finite real number — neither infinity nor NaN.
+Works portably by exploiting the fact that IEEE 754 comparisons with
+an infinite or NaN operand always return NIL."
+  (and (realp x)
+       (< (- most-positive-double-float) x most-positive-double-float)))
+
+
+;;; Unlike the data-driven geom helpers (point, bar, histogram, etc.),
+;;; FUNC is self-contained: it samples FN at N evenly-spaced x values
+;;; over XLIM using AOPS:LINSPACE, pairs each x with its computed y,
+;;; and embeds the resulting vector of plists as an inline :data block.
+;;; This means FUNC can be used without any external data frame —
+;;; pass the returned plist directly to MERGE-PLISTS with a title and
+;;; labels, then hand the result to VEGA:DEFPLOT.
+;;;
+;;; For overlaying a function curve on top of a data-driven scatter or
+;;; line plot, use Vega-Lite's :layer composition; see the documentation
+;;; for worked examples.
+;;;
+;;; Error handling: if FN signals a condition for a particular x (e.g.
+;;; (log 0d0), (/ 1 0d0)) or returns a non-finite value (±infinity,
+;;; NaN), that point is silently dropped.  Vega-Lite renders a gap in
+;;; the line for each run of dropped points, which is the correct
+;;; visual for functions with singularities (e.g. tan, 1/x).
+
+(defun func (fn &key
+                  (xlim    #(0d0 1d0))
+                  (n       100)
+                  (color   nil)
+                  (stroke-width nil)
+                  (stroke-dash  nil)
+                  (opacity      nil)
+                  (interpolate  :monotone))
+  "Return a self-contained Vega-Lite plist that plots FN as a line.
+
+FN is called with a single DOUBLE-FLOAT argument x and must return a
+real number.  N evenly-spaced x values are drawn from the closed
+interval [xmin, xmax] defined by XLIM using AOPS:LINSPACE.  The
+resulting (x, y) pairs are embedded as an inline :data block, so no
+external data frame is required.
+
+Points where FN signals a condition (e.g. (log 0d0), (/ 1 0)) or
+returns a non-finite value (±infinity, NaN) are silently dropped.
+Vega-Lite renders a gap at each run of dropped points — the correct
+visual for functions with singularities such as tan or 1/x.
+Finiteness is tested portably by comparing against ±MOST-POSITIVE-
+DOUBLE-FLOAT; IEEE 754 guarantees that those comparisons return NIL
+for infinities and NaN, so no implementation-specific extensions are
+needed.
+
+Parameters
+----------
+FN           — a Lisp function (real → real), e.g. #'sin, #'exp,
+               or a LAMBDA.  Must accept a DOUBLE-FLOAT argument.
+XLIM         — vector #(xmin xmax) defining the evaluation domain.
+               Default #(0d0 1d0).  Both endpoints are always included.
+N            — number of sample points (default 100).  Increase for
+               functions with rapid oscillation or sharp features.
+COLOR        — CSS color string for a fixed line color, e.g. \"steelblue\"
+               or \"#e63946\".  NIL (default) leaves Vega-Lite to choose.
+STROKE-WIDTH — positive number: line thickness in pixels.
+STROKE-DASH  — vector of dash/gap lengths, e.g. #(6 3) for a dashed
+               line or #(2 2) for a dotted one.
+OPACITY      — number in [0, 1]: line opacity (default: opaque).
+INTERPOLATE  — Vega-Lite interpolation method keyword (default :monotone
+               for smooth, well-behaved curves).  Other useful values:
+                 :linear   — straight segments between sample points
+                 :basis    — B-spline (may overshoot extrema)
+                 :cardinal — cardinal spline (passes through points)
+                 :step     — piecewise-constant / step function
+
+Return value
+------------
+A plist fragment containing :data, :mark, and :encoding keys, suitable
+for use with MERGE-PLISTS and VEGA:DEFPLOT.  The generated data uses
+field names :x and :y; the encoding references those same names.
+
+Usage patterns
+--------------
+Standalone function plot:
+
+  (vega:defplot sine-wave
+    (merge-plists
+      \\`(:title \"Sine Wave\")
+       (func #'sin :xlim #(-6.283 6.283) :n 200)
+       (gg:label :x \"x\" :y \"sin(x)\")))
+
+Two functions on the same axes — use :layer directly:
+
+  (vega:defplot trig-comparison
+    \\`(:title \"sin vs cos\"
+      :layer
+      #(,(func #'sin :xlim #(-6.283 6.283) :color \"steelblue\")
+        ,(func #'cos :xlim #(-6.283 6.283) :color \"firebrick\"))))
+
+Overlay on a scatter plot — each layer carries its own :data:
+
+  (vega:defplot cars-with-trend
+    \\`(:title \"HP vs MPG with Fitted Curve\"
+      :layer
+      #((:data   (:values ,vgcars)
+         :mark   (:type :point :filled t :opacity 0.5)
+         :encoding (:x (:field :horsepower    :type :quantitative)
+                    :y (:field :miles-per-gallon :type :quantitative)
+                    :color (:field :origin :type :nominal)))
+        ,(func (lambda (x) (+ 52.0 (* -0.23 x) (* 3.0e-4 (expt x 2))))
+               :xlim #(40 230)
+               :color \"firebrick\"
+               :stroke-width 2))))
+
+See also: GEOM:LINE for plotting pre-computed line data from a frame."
+  (check-type fn   function)
+  (check-type xlim vector)
+  (check-type n    (integer 2))
+  (let* ((xmin   (coerce (aref xlim 0) 'double-float))
+         (xmax   (coerce (aref xlim 1) 'double-float))
+         ;; AOPS:LINSPACE returns N points inclusive of both endpoints.
+         (xs     (aops:linspace xmin xmax n))
+         ;; Evaluate FN at each x.  Points where FN errors or returns a
+         ;; non-finite value are dropped; Vega-Lite will render a gap.
+         (values (let ((acc '()))
+                   (map nil
+                        (lambda (x)
+                          (let ((xf (coerce x 'double-float)))
+                            (handler-case
+                                (let ((y (funcall fn xf)))
+                                  ;; Accept only finite reals.  IEEE 754
+                                  ;; guarantees that comparisons against a
+                                  ;; finite bound return NIL for +-infinity
+                                  ;; and NaN, so this check is portable.
+                                  (when (and (realp y)
+                                             (< (- most-positive-double-float)
+                                                y
+                                                most-positive-double-float))
+                                    (push (list :x xf
+                                                :y (coerce y 'double-float))
+                                          acc)))
+                              (error () nil))))
+                        xs)
+                   (coerce (nreverse acc) 'vector)))
+         (mark-props `(,@(when interpolate  `(:interpolate  ,interpolate))
+                       ,@(when stroke-width `(:stroke-width ,stroke-width))
+                       ,@(when stroke-dash  `(:stroke-dash  ,stroke-dash))
+                       ,@(when (stringp color) `(:color ,color))
+                       ,@(when opacity `(:opacity ,opacity)))))
+    `(:data    (:values ,values)
+      :mark    (:type :line ,@mark-props)
+      :encoding (:x (:field :x :type :quantitative)
+                 :y (:field :y :type :quantitative)))))
+
+(defun loess (x y &key
+              (x-type :quantitative)
+              (y-type :quantitative)
+              (bandwidth 0.3)
+              (color nil)
+              (group nil)
+              (stroke-width nil)
+              (stroke-dash nil)
+              (opacity nil))
+  "Return plist specifying a LOESS smoothing layer.
+
+X: the predictor field (the 'on' field in the Vega-Lite transform)
+Y: the response field (the 'loess' field in the Vega-Lite transform)
+X-TYPE: Vega-Lite type for the x channel (default :quantitative)
+Y-TYPE: Vega-Lite type for the y channel (default :quantitative)
+BANDWIDTH: smoothing bandwidth in (0, 1] (default 0.3);
+           smaller values produce a more locally fitted, wiggly curve
+COLOR: a CSS color string for a fixed line color (e.g. \"firebrick\"),
+       or a keyword field name for nominal color encoding (e.g. :origin).
+       When GROUP is set and COLOR is nil, defaults to encoding by GROUP.
+GROUP: optional nominal field; a separate LOESS curve is fitted per group
+       (added to the transform's :groupby and, when COLOR is nil, to
+       the color encoding so curves are distinguished automatically)
+STROKE-WIDTH: number for fixed line stroke width
+STROKE-DASH: vector for a dash pattern, e.g. #(4 2)
+OPACITY: opacity value between 0 and 1
+
+Examples:
+
+  ;; Simple LOESS over a scatter plot layer
+  (loess :horsepower :miles-per-gallon)
+
+  ;; Tighter fit with a fixed color
+  (loess :horsepower :miles-per-gallon :bandwidth 0.1 :color \"firebrick\")
+
+  ;; One curve per origin, colored automatically
+  (loess :horsepower :miles-per-gallon :group :origin)
+
+  ;; Explicit color field overrides group default
+  (loess :year :value :x-type :temporal :group :country :color :region)"
+  (let ((mark-props `(,@(when stroke-width `(:stroke-width ,stroke-width))
+                      ,@(when stroke-dash  `(:stroke-dash ,stroke-dash))
+                      ,@(when (stringp color) `(:color ,color))
+                      ,@(when opacity `(:opacity ,opacity)))))
+    `(:transform #((:loess ,y :on ,x
+                    :bandwidth ,bandwidth
+                    ,@(when group `(:groupby #(,group)))))
+      :mark ,(if mark-props
+                 `(:type :line ,@mark-props)
+                 :line)
+      :encoding (:x (:field ,x :type ,x-type)
+                 :y (:field ,y :type ,y-type)
+                 ,@(cond ((keywordp color)
+                          `(:color (:field ,color :type :nominal)))
+                         ((and group (not color))
+                          `(:color (:field ,group :type :nominal))))))))
