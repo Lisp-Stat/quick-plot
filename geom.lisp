@@ -303,29 +303,6 @@ Examples:
                  ,@(when opacity
                      `(:opacity (:value ,opacity)))))))
 
-;;; -*- Mode: LISP; Syntax: Ansi-Common-Lisp; Base: 10; Package: GEOM -*-
-;;; Copyright (c) 2026 Symbolics Pte. Ltd. All rights reserved.
-;;; geom:func — plot a Lisp function as a smooth line layer.
-
-(in-package #:geom)
-
-;;; Unlike the data-driven geom helpers (point, bar, histogram, etc.),
-;;; FUNC is self-contained: it samples FN at N evenly-spaced x values
-;;; over XLIM using AOPS:LINSPACE, pairs each x with its computed y,
-;;; and embeds the resulting vector of plists as an inline :data block.
-;;; This means FUNC can be used without any external data frame —
-;;; pass the returned plist directly to MERGE-PLISTS with a title and
-;;; labels, then hand the result to VEGA:DEFPLOT.
-;;;
-;;; For overlaying a function curve on top of a data-driven scatter or
-;;; line plot, use Vega-Lite's :layer composition; see the documentation
-;;; for worked examples.
-;;;
-;;; Error handling: if FN signals a condition for a particular x (e.g.
-;;; (log 0d0), (/ 1 0d0)) or returns a non-finite value (±infinity,
-;;; NaN), that point is silently dropped.  Vega-Lite renders a gap in
-;;; the line for each run of dropped points, which is the correct
-;;; visual for functions with singularities (e.g. tan, 1/x).
 
 (defun %finite-real-p (x)
   "Return T iff X is a finite real number — neither infinity nor NaN.
