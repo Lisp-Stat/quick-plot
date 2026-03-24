@@ -303,7 +303,8 @@ Examples:
                  ,@(when opacity
                      `(:opacity (:value ,opacity)))))))
 
-
+;; This could use finite-real-p from num-utils, but that would
+;; introduce a dependency, and it's a simple function.
 (defun %finite-real-p (x)
   "Return T iff X is a finite real number — neither infinity nor NaN.
 Works portably by exploiting the fact that IEEE 754 comparisons with

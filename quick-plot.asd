@@ -3,7 +3,7 @@
 
 (defsystem "quick-plot"
   :name "Quick Plot"
-  :version     "1.3.0"
+  :version     "1.3.1"
   :license     :MS-PL
   :author      "Steve Nunez <steve@symbolics.tech>"
   :long-name   "GGPlot style plotting with Common Lisp"

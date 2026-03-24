@@ -1,0 +1,10 @@
+Thumbs.db
+.hugo_build.lock
+public/
+resources/
+node_modules/
+tech-doc-hugo
+hugo_stats.json
+.DS_Store
+
+*~
