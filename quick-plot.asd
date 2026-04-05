@@ -3,7 +3,7 @@
 
 (defsystem "quick-plot"
   :name "Quick Plot"
-  :version     "1.3.1"
+  :version     "1.4.0"
   :license     :MS-PL
   :author      "Steve Nunez <steve@symbolics.tech>"
   :long-name   "GGPlot style plotting with Common Lisp"
@@ -18,4 +18,17 @@
 	       (:file "pkgdcls")
 	       (:file "qplot")
 	       (:file "gg")
-	       (:file "geom")))
+	       (:file "geom"))
+  :in-order-to ((test-op (test-op "quick-plot/tests"))))
+
+(defsystem "quick-plot/tests"
+  :version     "1.0.0"
+  :description "Regression tests for quick-plot"
+  :depends-on ("quick-plot" "clunit2")
+  :serial t
+  :pathname "tests/"
+  :components ((:file "test-package")
+               (:file "qplot-tests"))
+  :perform (test-op (o s)
+             (declare (ignore o s))
+             (symbol-call :quick-plot-tests :run-tests)))
