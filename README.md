@@ -9,6 +9,8 @@
 
 
 
+<p>This experimental library is deprecated and its functionality has been merged into the main <a href="https://github.com/Lisp-Stat/plot">plot</a> system.
+
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">

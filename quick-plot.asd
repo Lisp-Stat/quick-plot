@@ -17,7 +17,6 @@
   :components ((:static-file #:LICENSE)
 	       (:file "pkgdcls")
 	       (:file "qplot")
-	       (:file "gg")
 	       (:file "geom"))
   :in-order-to ((test-op (test-op "quick-plot/tests"))))
 
